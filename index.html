@@ -485,17 +485,18 @@ html,body{ height:100%; overflow:hidden; }
     return ':root{\n    --bg:'+c.bg+';\n    --bg-soft:'+c.bgSoft+';\n    --card:'+c.card+';\n    --ink:'+c.ink+';\n    --ink-soft:'+c.inkSoft+';\n    --line:'+c.line+';\n    --pink:'+c.pink+';\n    --purple:'+c.purple+';\n    --cyan:'+c.cyan+';\n    --lime:'+c.lime+';\n    --amber:'+c.amber+';\n    --radius:18px;\n  }';
   }
 
-  function buildConfigBlock(s){
+  function buildConfigBlock(s, forPreview){
     var info = s.info.map(function(p){ return esc(p); }).join(',\n      ');
     var links = s.links.map(function(l){ return '{ label:'+esc(l.label)+', url:'+esc(l.url)+' }'; }).join(',\n      ');
     var reviews = s.reviews.map(function(r){ return '{ stars:'+(parseInt(r.stars,10)||5)+', text:'+esc(r.text)+' }'; }).join(',\n      ');
+    var introType = forPreview ? 'none' : s.intro.type;
     return 'var CONFIG = {\n' +
       '    eyebrow: '+esc(s.identite.eyebrow)+',\n' +
       '    shopName: '+esc(s.identite.shopName)+',\n' +
       '    tagline: '+esc(s.identite.tagline)+',\n' +
       '    whatsappNumber: '+esc(s.identite.whatsappNumber)+',\n' +
       '    logo: '+esc(s.identite.logo)+',\n' +
-      '    intro: { type: '+esc(s.intro.type)+', duration: '+(parseInt(s.intro.duration,10)||1400)+', emoji: '+esc(s.intro.emoji)+' },\n' +
+      '    intro: { type: '+esc(introType)+', duration: '+(parseInt(s.intro.duration,10)||1400)+', emoji: '+esc(s.intro.emoji)+' },\n' +
       '    infoParagraphs: [\n      '+info+'\n    ],\n' +
       '    links: [\n      '+links+'\n    ],\n' +
       '    reviews: [\n      '+reviews+'\n    ]\n' +
@@ -606,10 +607,10 @@ html,body{ height:100%; overflow:hidden; }
   var INTRO_ANCHOR_HEAD = '</style>\n</head>\n<body>\n\n<header>';
   var INTRO_ANCHOR_JS = '  renderHeader();\n  renderInfo();\n  renderLinks();\n  renderReviews();\n  renderBanners();\n  renderCart();\n})();\n<\/script>\n</body>\n</html>\n';
 
-  function buildOutput(){
+  function buildOutput(forPreview){
     var html = BASE.full;
     html = html.replace(BASE.root, buildRootBlock(state.colors));
-    html = html.replace(BASE.config, buildConfigBlock(state));
+    html = html.replace(BASE.config, buildConfigBlock(state, forPreview));
     html = html.replace(BASE.cats, buildCatsBlock(state.cats));
     html = html.replace(BASE.products, buildProductsBlock(state.products));
     html = html.replace(BASE.header, HEADER_HTML);
@@ -625,13 +626,17 @@ html,body{ height:100%; overflow:hidden; }
 
   // ---------- Aperçu ----------
   var previewTimer = null;
+  var previewOpen = false;
   function schedulePreview(){
     if (previewTimer) clearTimeout(previewTimer);
-    previewTimer = setTimeout(function(){ updatePreview(); saveCurrentState(); }, 250);
+    previewTimer = setTimeout(function(){
+      if (previewOpen) updatePreview();
+      saveCurrentState();
+    }, 400);
   }
   function updatePreview(){
     var frame = el('previewFrame');
-    frame.srcdoc = buildOutput();
+    frame.srcdoc = buildOutput(true);
   }
 
   // ---------- Onglets ----------
@@ -1189,19 +1194,28 @@ html,body{ height:100%; overflow:hidden; }
 
   renderAll();
   showTab('boutique');
+
+  // ---------- Bouton flottant Aperçu (plein écran) ----------
+  var previewFab = document.getElementById('previewFab');
+  var previewColEl = document.getElementById('previewCol');
+  var previewCloseBtn = document.getElementById('previewClose');
+  if (previewFab && previewColEl && previewCloseBtn){
+    previewFab.addEventListener('click', function(){
+      previewColEl.classList.add('show');
+      previewOpen = true;
+      updatePreview();
+    });
+    previewCloseBtn.addEventListener('click', function(){
+      previewColEl.classList.remove('show');
+      previewOpen = false;
+    });
+  }
 })();
 
 </script>
 <script>
 (function(){
   "use strict";
-  var fab = document.getElementById('previewFab');
-  var col = document.getElementById('previewCol');
-  var close = document.getElementById('previewClose');
-  if (fab && col && close){
-    fab.addEventListener('click', function(){ col.classList.add('show'); });
-    close.addEventListener('click', function(){ col.classList.remove('show'); });
-  }
   if ('serviceWorker' in navigator){
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('sw.js').catch(function(){});
